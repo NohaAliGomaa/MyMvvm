@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">MyMvvm</string>
+    <string name="title_activity_products">ProductsActivity</string>
+    <string name="title_activity_favorites">FavoritesActivity</string>
+</resources>

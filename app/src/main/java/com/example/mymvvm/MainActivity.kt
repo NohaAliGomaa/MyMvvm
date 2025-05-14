@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.products), // Replace with your image
+                painter = painterResource(id = R.drawable.products),
                 contentDescription = "App Logo",
                 modifier = Modifier.size(120.dp).padding(16.dp)
             )

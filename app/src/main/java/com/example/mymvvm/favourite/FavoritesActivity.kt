@@ -15,11 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,9 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberImagePainter
+import com.example.mymvvm.allproduct.ProductItem
 import com.example.mymvvm.favourite.ui.theme.MyMvvmTheme
 import com.example.mymvvm.model.local.LocalDataSourceImpl
 import com.example.mymvvm.model.remote.RemotDataSourceImpl
+import com.example.mymvvm.model.response.Response
 import com.example.product_kotlin.model.local.AppDatabase
 import com.example.product_kotlin.model.models.Product
 import com.example.product_kotlin.model.repo.ProductRepository
@@ -55,21 +59,46 @@ class FavoritesActivity : ComponentActivity() {
 
 @Composable
 fun FavoriteScreen(viewModel: ProductViewModel) {
-    val products = viewModel.favProducts.observeAsState(emptyList())
+    val productsState = viewModel.favProducts.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.getFavoriteProducts() // Load from Room
+        viewModel.getFavoriteProducts()
     }
 
     Column {
-        Text("Favorite Products", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(8.dp))
-        LazyColumn {
-            items(products.value) { product ->
-                FavoriteProductItem (product, onRemoveFavorite = { viewModel.removeFromFavorites(product.id) })
+        Text(
+            "Favorite Products",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(8.dp)
+        )
+
+        when (val products = productsState.value) {
+            is Response.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            }
+
+            is Response.Success -> {
+                val productList = products.data
+                LazyColumn {
+                    items(productList) { product ->
+                        FavoriteProductItem(product, onRemoveFavorite = {
+                            viewModel.removeFromFavorites(product.id)
+                        })
+                    }
+                }
+            }
+            is Response.Failure -> {
+                val errorMessage = products.error.message ?: "Unknown Error"
+                Text(
+                    "Error: $errorMessage",
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }
 }
+
 @Composable
 fun FavoriteProductItem(product: Product, onRemoveFavorite: () -> Unit) {
     Card(

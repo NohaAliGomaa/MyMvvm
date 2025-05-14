@@ -8,24 +8,29 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.mymvvm.model.response.Response
 import com.example.product_kotlin.model.local.AppDatabase
 import com.example.product_kotlin.model.models.Product
 import com.example.product_kotlin.model.repo.ProductRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class ProductViewModel(val repo:ProductRepository) :ViewModel() {
-    private val _products = MutableLiveData<List<Product>>()
-    val products: LiveData<List<Product>> = _products
 
-    private val _favProducts = MutableLiveData<List<Product>>()
-    val favProducts: LiveData<List<Product>> = _favProducts
+    private val _products = MutableStateFlow<Response>(Response.Loading)
+    val products: StateFlow<Response> = _products.asStateFlow()
 
-    private val mutableMessage: MutableLiveData<String> = MutableLiveData("")
-    val message: LiveData<String> = mutableMessage
+    private val _favProducts = MutableStateFlow<Response>(Response.Loading)
+    val favProducts: StateFlow<Response> = _favProducts.asStateFlow()
+
+    private val mutableMessage = MutableStateFlow("")
+    val message: StateFlow<String> = mutableMessage.asStateFlow()
 
 
     init{
@@ -33,16 +38,14 @@ class ProductViewModel(val repo:ProductRepository) :ViewModel() {
     }
     fun getProducts() {
         viewModelScope.launch {
-            try {
                 repo.fetchProducts()
+                    .catch { e -> _products.value = Response.Failure(e) }
                     .collect { productsList ->
                         Log.i("TAG", "Products loaded: ${products.value}")
-                        _products.postValue(productsList) // Update LiveData safely
+                        _products.value = Response.Success(productsList)
 
                     }
-            } catch (e: Exception) {
-                mutableMessage.postValue("An Error Occurred: ${e.message}")
-            }
+
         }
     }
 
@@ -51,7 +54,7 @@ class ProductViewModel(val repo:ProductRepository) :ViewModel() {
             try{
                 val result = repo.addToFavorites(product)
             }catch (e:Exception){
-                mutableMessage.postValue("An Error Occured :${e.message}")
+                mutableMessage.value = "An Error Occured :${e.message}"
             }
         }
 
@@ -64,18 +67,16 @@ class ProductViewModel(val repo:ProductRepository) :ViewModel() {
         }
     }
 
-    fun getFavoriteProducts(): LiveData<List<Product>> {
+    fun getFavoriteProducts() {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                repo.getFavoriteProducts().collect { list ->
-                    _favProducts.postValue(list) // Post collected list to LiveData
+                repo.getFavoriteProducts()
+                    .catch { e -> _favProducts.value = Response.Failure(e) }
+                    .collect { list ->
+                    _favProducts.value = Response.Success(list)// Post collected list to LiveData
                     Log.i("TAG", "Updated favorites: ${favProducts.value}")
                 }
-            } catch (e: Exception) {
-                mutableMessage.postValue("An Error Occurred: ${e.message}")
-            }
+
         }
-        return favProducts
     }
 
 }
